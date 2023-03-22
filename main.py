@@ -18,7 +18,7 @@ def createBase(con):
     cur = con.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, ip TEXT, localizacion TEXT, responsable_id TEXT, analisis_id INTEGER)")
     cur.execute("CREATE TABLE IF NOT EXISTS responsable (nombre TEXT PRIMARY KEY, telefono TEXT, rol TEXT)")
-    cur.execute("CREATE TABLE IF NOT EXISTS analisis (id INTEGER PRIMARY KEY, puertos_abiertos TEXT, no_puertos_abiertos INTEGER, servicios INTEGER, servicios_inseguros INTEGER, vulnerabilidades_detectadas INTEGER)")
+    cur.execute("CREATE TABLE IF NOT EXISTS analisis (id TEXT PRIMARY KEY, puertos_abiertos TEXT, no_puertos_abiertos INTEGER, servicios INTEGER, servicios_inseguros INTEGER, vulnerabilidades_detectadas INTEGER)")
 
     for d in devices:
         responsable = d['responsable']
@@ -28,7 +28,7 @@ def createBase(con):
             ports = 0
         else:
             ports = len(analisis["puertos_abiertos"])
-        cur.execute("INSERT OR IGNORE INTO analisis (puertos_abiertos, no_puertos_abiertos, servicios, servicios_inseguros, vulnerabilidades_detectadas) VALUES (?, ?, ?, ?, ?)", (json.dumps(analisis['puertos_abiertos']), ports, analisis['servicios'], analisis['servicios_inseguros'], analisis['vulnerabilidades_detectadas']))
+        cur.execute("INSERT OR IGNORE INTO analisis (id, puertos_abiertos, no_puertos_abiertos, servicios, servicios_inseguros, vulnerabilidades_detectadas) VALUES (?, ?, ?, ?, ?, ?)", (d['id'], json.dumps(analisis['puertos_abiertos']), ports, analisis['servicios'], analisis['servicios_inseguros'], analisis['vulnerabilidades_detectadas']))
         analisis_id = cur.lastrowid
         cur.execute("INSERT OR IGNORE INTO devices (id, ip, localizacion, responsable_id, analisis_id) VALUES (?, ?, ?, ?, ?)", (d['id'], d['ip'], d['localizacion'], responsable['nombre'], analisis_id))
 
@@ -68,7 +68,7 @@ def ex4(con):
         ips.append(row[0])
         num.append(row[1])
     plt.bar(ips, num)
-    plt.xticks(rotation=20, ha='right')
+    plt.xticks(rotation=25)
     plt.title('IP de origen más problemáticas')
     plt.xlabel('IP de origen')
     plt.ylabel('Número de alertas')
@@ -89,7 +89,58 @@ def ex4(con):
     ax.xaxis.set_major_locator(mdates.DayLocator(interval=7))
     plt.show()
 
+    cur.execute("SELECT clasificacion, COUNT(*) as num_alertas FROM alerts GROUP BY clasificacion")
+    cat = []
+    num3 = []
+    for row in cur.fetchall():
+        cat.append(row[0])
+        num3.append(row[1])
+    plt.bar(cat, num3)
+    plt.xticks(fontsize=5)
+    plt.xticks(rotation=20, ha='right')
+    plt.title('Número de alertas por categorías')
+    plt.xlabel('Categorías')
+    plt.ylabel('Número de alertas')
+    plt.show()
 
+    cur.execute("SELECT id,SUM(servicios_inseguros + vulnerabilidades_detectadas) FROM analisis GROUP BY id")
+    dev = []
+    num4 = []
+    for row in cur.fetchall():
+        dev.append(row[0])
+        num4.append(row[1])
+    plt.bar(dev, num4)
+    plt.xticks(rotation=25)
+    plt.title('Dispositivos más vulnerables')
+    plt.xlabel('Dispositivo')
+    plt.ylabel('Servicios vulnerables + vulnerabilidades')
+    plt.show()
+
+    cur.execute("SELECT servicios_inseguros,AVG(no_puertos_abiertos) FROM analisis GROUP BY servicios_inseguros")
+    ser = []
+    num5 = []
+    for row in cur.fetchall():
+        ser.append(row[0])
+        num5.append(row[1])
+    plt.bar(ser, num5)
+    plt.xticks(rotation=25)
+    plt.title('Puertos abiertos por servicios vulnerables')
+    plt.xlabel('Servicios vulnerables')
+    plt.ylabel('Media de puertos abiertos')
+    plt.show()
+
+    cur.execute("SELECT servicios,AVG(no_puertos_abiertos) FROM analisis GROUP BY servicios")
+    ser2 = []
+    num6 = []
+    for row in cur.fetchall():
+        ser2.append(row[0])
+        num6.append(row[1])
+    plt.bar(ser2, num6)
+    plt.xticks(rotation=25)
+    plt.title('Puertos abiertos por servicios totales')
+    plt.xlabel('Servicios totales')
+    plt.ylabel('Media de puertos abiertos')
+    plt.show()
 
 
 con = sqlite3.connect("database.db")
