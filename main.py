@@ -48,6 +48,38 @@ def ex2(con):
     print()
 
 
+def ex3(con):
+    print("Ejercicio 3:")
+    print("Por prioridad")
+    vulnerabilitiesPrio = pd.read_sql_query("SELECT prioridad, vulnerabilidades_detectadas FROM devices JOIN ( SELECT  prioridad, origen, destino FROM alerts ORDER BY prioridad) ON ip = origen OR ip = destino", con)
+    for i in range(1, 4):
+        print("Prioridad ",i)
+        priority = vulnerabilitiesPrio[(vulnerabilitiesPrio['prioridad'] == i)]
+        print("Numero de observaciones: ", priority.shape[0])
+        print("Mediana de vulnerabilidades detectadas: ", priority["vulnerabilidades_detectadas"].median())
+        print("Media de vulnerabilidades detectadas: ", priority["vulnerabilidades_detectadas"].mean())
+        print("Varianza de vulnerabilidades detectadas: ", priority["vulnerabilidades_detectadas"].var())
+        print("Valor máximo de vulnerabilidades detectadas: ", priority["vulnerabilidades_detectadas"].max())
+        print("Valor mínimo de vulnerabilidades detectadas: ", priority["vulnerabilidades_detectadas"].min())
+        print()
+
+    print("Por fecha:")
+    vulnerabilitiesDate = pd.read_sql_query("SELECT timestamp, vulnerabilidades_detectadas FROM devices JOIN ( SELECT timestamp, origen, destino FROM alerts ORDER BY timestamp) ON ip = origen OR ip = destino",con)
+    vulnerabilitiesDate['timestamp'] = pd.to_datetime(vulnerabilitiesDate['timestamp'])
+    for i in range(7,9):
+        date = vulnerabilitiesDate[(vulnerabilitiesDate['timestamp'].dt.month == i)]
+        if i==7:
+            print("Julio:")
+        else:
+            print("Agosto")
+        print("Numero de observaciones: ", date.shape[0])
+        print("Mediana de vulnerabilidades detectadas: ", date["vulnerabilidades_detectadas"].median())
+        print("Media de vulnerabilidades detectadas: ", date["vulnerabilidades_detectadas"].mean())
+        print("Varianza de vulnerabilidades detectadas: ", date["vulnerabilidades_detectadas"].var())
+        print("Valor máximo de vulnerabilidades detectadas: ", date["vulnerabilidades_detectadas"].max())
+        print("Valor mínimo de vulnerabilidades detectadas: ", date["vulnerabilidades_detectadas"].min())
+        print()
+
 def ex4(con):
     cur = con.cursor()
     cur.execute("SELECT origen, COUNT(*) as num_alertas FROM alerts WHERE prioridad = 1 GROUP BY origen ORDER BY num_alertas DESC LIMIT 10")
@@ -135,7 +167,7 @@ def ex4(con):
 con = sqlite3.connect("database.db")
 createBase(con)
 ex2(con)
-#ex3(con)
+ex3(con)
 ex4(con)
 con.commit()
 
