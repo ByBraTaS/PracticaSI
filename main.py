@@ -6,19 +6,18 @@ import matplotlib.dates as mdates
 
 
 def createBase(con):
-    #alerts
+    #alerts to database
     alerts = pd.read_csv("data/alerts.csv")
     alerts.to_sql("alerts", con, if_exists="replace", index=False)
 
-    #devices
+    #devices to database
     dev = open("data/devices.json")
     devices = json.load(dev)
 
-    # create tables
+    #tables
     cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, ip TEXT, localizacion TEXT, responsable_id TEXT, analisis_id INTEGER)")
+    cur.execute("CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, ip TEXT, localizacion TEXT, responsable_id TEXT, puertos_abiertos TEXT, no_puertos_abiertos INTEGER, servicios INTEGER, servicios_inseguros INTEGER, vulnerabilidades_detectadas INTEGER)")
     cur.execute("CREATE TABLE IF NOT EXISTS responsable (nombre TEXT PRIMARY KEY, telefono TEXT, rol TEXT)")
-    cur.execute("CREATE TABLE IF NOT EXISTS analisis (id TEXT PRIMARY KEY, puertos_abiertos TEXT, no_puertos_abiertos INTEGER, servicios INTEGER, servicios_inseguros INTEGER, vulnerabilidades_detectadas INTEGER)")
 
     for d in devices:
         responsable = d['responsable']
@@ -28,36 +27,26 @@ def createBase(con):
             ports = 0
         else:
             ports = len(analisis["puertos_abiertos"])
-        cur.execute("INSERT OR IGNORE INTO analisis (id, puertos_abiertos, no_puertos_abiertos, servicios, servicios_inseguros, vulnerabilidades_detectadas) VALUES (?, ?, ?, ?, ?, ?)", (d['id'], json.dumps(analisis['puertos_abiertos']), ports, analisis['servicios'], analisis['servicios_inseguros'], analisis['vulnerabilidades_detectadas']))
-        analisis_id = cur.lastrowid
-        cur.execute("INSERT OR IGNORE INTO devices (id, ip, localizacion, responsable_id, analisis_id) VALUES (?, ?, ?, ?, ?)", (d['id'], d['ip'], d['localizacion'], responsable['nombre'], analisis_id))
+        cur.execute("INSERT OR IGNORE INTO devices (id, ip, localizacion, responsable_id, puertos_abiertos, no_puertos_abiertos, servicios, servicios_inseguros, vulnerabilidades_detectadas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (d['id'], d['ip'], d['localizacion'], responsable['nombre'], json.dumps(analisis['puertos_abiertos']), ports, analisis['servicios'], analisis['servicios_inseguros'], analisis['vulnerabilidades_detectadas']))
 
 def ex2(con):
     devices = pd.read_sql_query("SELECT * from devices", con)
     alerts = pd.read_sql_query("SELECT * from alerts", con)
-    analisis = pd.read_sql_query("SELECT * from analisis", con)
     print("Ejercicio 2:")
     print("Número de dispositivos: ",devices.shape[0])
     print("Número de alertas: ", alerts.shape[0])
-    print("Media de puertos abiertos: ", analisis['no_puertos_abiertos'].mean())
-    print("Desviación estandar de puertos abiertos: ", analisis['no_puertos_abiertos'].std())
-    print("Media de servicios inseguros: ", analisis['servicios_inseguros'].mean())
-    print("Desviación estandar de servicios inseguros: ", analisis['servicios_inseguros'].std())
-    print("Media de vulnerabilidades encontradas: ", analisis['vulnerabilidades_detectadas'].mean())
-    print("Desviación estandar de vulnerabilidades encontradas: ", analisis['vulnerabilidades_detectadas'].std())
-    print("Mínimo de puertos abiertos: ", analisis['no_puertos_abiertos'].min())
-    print("Máximo de puertos abiertos: ", analisis['no_puertos_abiertos'].max())
-    print("Mínimo de vulnerabilidades encontradas: ", analisis['vulnerabilidades_detectadas'].min())
-    print("Máximo de vulnerabilidades encontradas: ", analisis['vulnerabilidades_detectadas'].max())
+    print("Media de puertos abiertos: ", devices['no_puertos_abiertos'].mean())
+    print("Desviación estandar de puertos abiertos: ", devices['no_puertos_abiertos'].std())
+    print("Media de servicios inseguros: ", devices['servicios_inseguros'].mean())
+    print("Desviación estandar de servicios inseguros: ", devices['servicios_inseguros'].std())
+    print("Media de vulnerabilidades encontradas: ", devices['vulnerabilidades_detectadas'].mean())
+    print("Desviación estandar de vulnerabilidades encontradas: ", devices['vulnerabilidades_detectadas'].std())
+    print("Mínimo de puertos abiertos: ", devices['no_puertos_abiertos'].min())
+    print("Máximo de puertos abiertos: ", devices['no_puertos_abiertos'].max())
+    print("Mínimo de vulnerabilidades encontradas: ", devices['vulnerabilidades_detectadas'].min())
+    print("Máximo de vulnerabilidades encontradas: ", devices['vulnerabilidades_detectadas'].max())
     print()
 
-def ex3(con):
-    alertasPrioridad = pd.read_sql_query("SELECT * from alerts GROUP BY PRIORIDAD", con)
-    alertasFecha = pd.read_sql_query("SELECT * from alerts GROUP BY PRIORIDAD", con)
-
-
-    print("Ejercicio 3:")
-    print()
 
 def ex4(con):
     cur = con.cursor()
@@ -103,7 +92,7 @@ def ex4(con):
     plt.ylabel('Número de alertas')
     plt.show()
 
-    cur.execute("SELECT id,SUM(servicios_inseguros + vulnerabilidades_detectadas) FROM analisis GROUP BY id")
+    cur.execute("SELECT id,SUM(servicios_inseguros + vulnerabilidades_detectadas) FROM devices GROUP BY id")
     dev = []
     num4 = []
     for row in cur.fetchall():
@@ -116,7 +105,7 @@ def ex4(con):
     plt.ylabel('Servicios vulnerables + vulnerabilidades')
     plt.show()
 
-    cur.execute("SELECT servicios_inseguros,AVG(no_puertos_abiertos) FROM analisis GROUP BY servicios_inseguros")
+    cur.execute("SELECT servicios_inseguros,AVG(no_puertos_abiertos) FROM devices GROUP BY servicios_inseguros")
     ser = []
     num5 = []
     for row in cur.fetchall():
@@ -129,7 +118,7 @@ def ex4(con):
     plt.ylabel('Media de puertos abiertos')
     plt.show()
 
-    cur.execute("SELECT servicios,AVG(no_puertos_abiertos) FROM analisis GROUP BY servicios")
+    cur.execute("SELECT servicios,AVG(no_puertos_abiertos) FROM devices GROUP BY servicios")
     ser2 = []
     num6 = []
     for row in cur.fetchall():
@@ -146,7 +135,7 @@ def ex4(con):
 con = sqlite3.connect("database.db")
 createBase(con)
 ex2(con)
-ex3(con)
+#ex3(con)
 ex4(con)
 con.commit()
 
